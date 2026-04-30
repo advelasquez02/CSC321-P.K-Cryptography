@@ -32,7 +32,7 @@ def alice(y_b):
     # compute shared secret
     s = pow(y_b, x_a, q)
     # hash the key and truncate to 16 bits
-    k = SHA256.new(s.to_bytes((s.bit_length() + 7) // 8, 'big')).digest()[:16]
+    k = SHA256.new(str(s).encode()).digest()[:16]
     # raw byte string
     cipherTxt = AES.new(k, AES.MODE_CBC, IV).encrypt(pad(b"Hi Bob!", 16))
     return y_a, cipherTxt
@@ -46,14 +46,14 @@ def bob(y_a):
     # compute shared secret
     s = pow(y_a, x_b, q)
     # hash the key and truncate to 16 bits
-    k = SHA256.new(s.to_bytes((s.bit_length() + 7) // 8, 'big')).digest()[:16]
+    k = SHA256.new(str(s).encode()).digest()[:16]
 
     # raw byte string
     cipherTxt = AES.new(k, AES.MODE_CBC, IV).encrypt(pad(b"Hi Alice!", 16))
     return y_b, cipherTxt
 
 if __name__ == '__main__':
-    # Mallory intercepts and sends q to both alice and bob instead of y_b and y_a
+
     y_a, alice_txt = alice(q)
     y_b, bob_txt = bob(q)
 
