@@ -1,34 +1,91 @@
 import random
+
+import Crypto
 from Crypto.Hash import SHA256
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+from  Crypto.Util.Padding import unpad
+from Crypto.Random import get_random_bytes
 
 
 #create Diffie-Hellman exchange to make key then use that key to do AES-CBC
 
+#making q and a "real life numbers"
+q = int(
+    "B10B8F96A080E01DDE92DE5EAE5D54EC52C99FBCFB06A3C6"
+    "9A6A9DCA52D23B616073E28675A23D189838EF1E2EE652C0"
+    "13ECB4AEA906112324975C3CD49B83BFACCBDD7D90C4BD70"
+    "98488E9C219A73724EFFD6FAE5644738FAA31A4FF55BCCC0"
+    "A151AF5F0DC8B4BD45BF37DF365C1A65E68CFDA76D4DA708"
+    "DF1FB2BC2E4A4371", 16
+)
+
+a = int(
+    "A4D1CBD5C3FD34126765A442EFB99905F8104DD258AC507F"
+    "D6406CFF14266D31266FEA1E5C41564B777E690F5504F213"
+    "160217B4B01B886A5E91547F9E2749F4D7FBD7D3B9A92EE1"
+    "909D0D2263F80A76A6A24C087A091F531DBF0A0169B6A28A"
+    "D662A4D18E73AFA32D779D5918D08BC8858F4DCEF97C2A24"
+    "855E6EEB22B3B2E5", 16
+)
+
 # q = mod and a = base
-q = 37
-a = 5
+
+# q = 37
+# a = 5
+IV = get_random_bytes(16)
+
+def alice_keygen():
+    # random integer for exponent in the range 2 to q-1
+    x_a = random.randint(1, q - 1)
+    # compute public key to send to bob
+    y_a = pow(a, x_a, q)
+
+    return y_a,x_a
+
+def bob_keygen():
+    # random integer for exponent in the range 2 to q-1
+    x_b = random.randint(1, q - 1)
+    # compute public key to send to alice
+    y_b = pow(a, x_b, q)
+
+    return y_b, x_b
 
 def alice(x_a, y_b):
-    #random integer for exponent in the range 2 to q-1
-    s = pow(y_b,x_a,q)
-    return s
+    s = pow(y_b, x_a, q)
+    #hash the key and truncate to 16 bits
+    k = SHA256.new(s.to_bytes((s.bit_length() + 7) // 8, 'big')).digest()[:16]
+    #raw byte string
+    message = b"Hi bob!"
+
+    encrypt = AES.new(k, AES.MODE_CBC, IV)
+    cipherTxt = encrypt.encrypt(pad(message,16))
+
+    return cipherTxt
 
 def bob(x_b, y_a):
+
     s = pow(y_a,x_b,q)
-    return s
+
+    k = SHA256.new(s.to_bytes((s.bit_length() + 7) // 8, 'big')).digest()[:16]
+    message = b"Hi Alice!"
+    encrypt = AES.new(k, AES.MODE_CBC, IV)
+    cipherTxt = encrypt.encrypt(pad(message,16))
+
+    return cipherTxt
+
 
 if __name__ == '__main__':
-    x_a = random.randint(1,q-1)
-    y_a = pow(a,x_a,q)
 
-    x_b = random.randint(1,q-1)
-    y_b = pow(a,x_b,q)
+    y_a, x_a = alice_keygen()
+    y_b, x_b = bob_keygen()
 
-    s_alice = alice(x_a, y_b)
-    s_bob = bob(x_b, y_a)
+    alice_txt = alice( x_a,y_a)
+    bob_txt = bob( x_b, y_a)
 
-    k = SHA256.new(s_alice.to_bytes((s_alice.bit_length() + 7) // 8, 'big')).digest()
+    #note that we are not checking for the same keys. It was checked before.
+    #So we are essentially trusting the key generator since they are private.
 
-    
-
+    print("Alice sent:", alice_txt.hex())
+    print("Bob sent:", bob_txt.hex())
 
