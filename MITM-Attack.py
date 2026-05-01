@@ -56,27 +56,20 @@ def bob(y_a):
     cipherTxt = AES.new(k, AES.MODE_CBC, IV).encrypt(pad(b"Hi Alice!", 16))
     return y_b, cipherTxt
 
-def mallroy(cipherTxt):
-    bob(q)
-    alice(a)
-
-    #since we know q and a, and the fact that we sent q to both alice and bob instead of
-    #their respective computed keys we know that s will always equal 0.
-    mallroy_s = pow(q, 1, q)
-    k = SHA256.new(str(mallroy_s).encode()).digest()[:16]
-    plaintext = unpad(AES.new(k, AES.MODE_CBC, IV).decrypt(cipherTxt), 16)
-    return plaintext.decode()
-
-
-
-if __name__ == '__main__':
-    # Mallory intercepts and sends q to both alice and bob instead of y_b and y_a
+def mallory():
+    # send q to both alice and bob instead of their real public keys
+    # s = pow(q, x, q) = 0 always
     y_a, alice_txt = alice(q)
     y_b, bob_txt = bob(q)
 
-    plaintext_a = mallroy(alice_txt)
-    plaintext_b = mallroy(bob_txt)
+    mallory_s = 0
+    k = SHA256.new(str(mallory_s).encode()).digest()[:16]
 
-    # note that we are not checking for the same keys. It was checked before.
-    # So we are essentially trusting the key generator since they are private.
-    print("Mallroy got the plaintexts:" + plaintext_a + plaintext_b)
+    plaintext_a = unpad(AES.new(k, AES.MODE_CBC, IV).decrypt(alice_txt), 16).decode()
+    plaintext_b = unpad(AES.new(k, AES.MODE_CBC, IV).decrypt(bob_txt), 16).decode()
+
+    return plaintext_a, plaintext_b
+
+if __name__ == '__main__':
+    plaintext_a, plaintext_b = mallory()
+    print("Mallory got the plaintexts: " + plaintext_a + " " + plaintext_b)
