@@ -4,6 +4,9 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
 
+#create Diffie-Hellman exchange to make key then use that key to do AES-CBC
+
+#making q and a "real life numbers"
 q = int(
     "B10B8F96A080E01DDE92DE5EAE5D54EC52C99FBCFB06A3C6"
     "9A6A9DCA52D23B616073E28675A23D189838EF1E2EE652C0"
@@ -21,41 +24,50 @@ a = int(
     "D662A4D18E73AFA32D779D5918D08BC8858F4DCEF97C2A24"
     "855E6EEB22B3B2E5", 16
 )
-# q,a = 37, 5
-IV= get_random_bytes(16)
 
-def alice(y_b):
+# q = mod and a = base
+# q = 37
+# a = 5
+IV = get_random_bytes(16)
+
+def alice_keygen():
     # random integer for exponent in the range 2 to q-1
     x_a = random.randint(1, q - 1)
     # compute public key to send to bob
     y_a = pow(a, x_a, q)
+    return y_a, x_a
+
+def bob_keygen():
+    # random integer for exponent in the range 2 to q-1
+    x_b = random.randint(1, q - 1)
+    # compute public key to send to alice
+    y_b = pow(a, x_b, q)
+    return y_b, x_b
+
+def alice(x_a, y_b):
     # compute shared secret
     s = pow(y_b, x_a, q)
     # hash the key and truncate to 16 bits
     k = SHA256.new(str(s).encode()).digest()[:16]
     # raw byte string
     cipherTxt = AES.new(k, AES.MODE_CBC, IV).encrypt(pad(b"Hi Bob!", 16))
-    return y_a, cipherTxt
+    return cipherTxt
 
-def bob(y_a):
-    # random integer for exponent in the range 2 to q-1
-    x_b = random.randint(1, q - 1)
-    # compute public key to send to alice
-    y_b = pow(a, x_b, q)
-
+def bob(x_b, y_a):
     # compute shared secret
     s = pow(y_a, x_b, q)
     # hash the key and truncate to 16 bits
     k = SHA256.new(str(s).encode()).digest()[:16]
-
     # raw byte string
     cipherTxt = AES.new(k, AES.MODE_CBC, IV).encrypt(pad(b"Hi Alice!", 16))
-    return y_b, cipherTxt
+    return cipherTxt
 
 if __name__ == '__main__':
+    y_a, x_a = alice_keygen()
+    y_b, x_b = bob_keygen()
 
-    y_a, alice_txt = alice(q)
-    y_b, bob_txt = bob(q)
+    alice_txt = alice(x_a, y_b)
+    bob_txt = bob(x_b, y_a)
 
     # note that we are not checking for the same keys. It was checked before.
     # So we are essentially trusting the key generator since they are private.
