@@ -30,44 +30,47 @@ a = int(
 # a = 5
 IV = get_random_bytes(16)
 
-def alice_keygen():
-    # random integer for exponent in the range 2 to q-1
-    x_a = random.randint(1, q - 1)
-    # compute public key to send to bob
-    y_a = pow(a, x_a, q)
-    return y_a, x_a
+class Alice:
+    def keygen(self):
+        # random integer for exponent in the range 2 to q-1
+        self.x_a = random.randint(1, q - 1)
+        # compute public key to send to bob
+        self.y_a = pow(a, self.x_a, q)
+        return self.y_a
 
-def bob_keygen():
-    # random integer for exponent in the range 2 to q-1
-    x_b = random.randint(1, q - 1)
-    # compute public key to send to alice
-    y_b = pow(a, x_b, q)
-    return y_b, x_b
+    def encrypt(self, y_b):
+        # compute shared secret
+        s = pow(y_b, self.x_a, q)
+        # hash the key and truncate to 16 bits
+        k = SHA256.new(str(s).encode()).digest()[:16]
+        # raw byte string
+        return AES.new(k, AES.MODE_CBC, IV).encrypt(pad(b"Hi Bob!", 16))
 
-def alice(x_a, y_b):
-    # compute shared secret
-    s = pow(y_b, x_a, q)
-    # hash the key and truncate to 16 bits
-    k = SHA256.new(str(s).encode()).digest()[:16]
-    # raw byte string
-    cipherTxt = AES.new(k, AES.MODE_CBC, IV).encrypt(pad(b"Hi Bob!", 16))
-    return cipherTxt
+class Bob:
+    def keygen(self):
+        # random integer for exponent in the range 2 to q-1
+        self.x_b = random.randint(1, q - 1)
+        # compute public key to send to alice
+        self.y_b = pow(a, self.x_b, q)
+        return self.y_b
 
-def bob(x_b, y_a):
-    # compute shared secret
-    s = pow(y_a, x_b, q)
-    # hash the key and truncate to 16 bits
-    k = SHA256.new(str(s).encode()).digest()[:16]
-    # raw byte string
-    cipherTxt = AES.new(k, AES.MODE_CBC, IV).encrypt(pad(b"Hi Alice!", 16))
-    return cipherTxt
+    def encrypt(self, y_a):
+        # compute shared secret
+        s = pow(y_a, self.x_b, q)
+        # hash the key and truncate to 16 bits
+        k = SHA256.new(str(s).encode()).digest()[:16]
+        # raw byte string
+        return AES.new(k, AES.MODE_CBC, IV).encrypt(pad(b"Hi Alice!", 16))
 
 if __name__ == '__main__':
-    y_a, x_a = alice_keygen()
-    y_b, x_b = bob_keygen()
+    alice = Alice()
+    bob = Bob()
 
-    alice_txt = alice(x_a, y_b)
-    bob_txt = bob(x_b, y_a)
+    y_a = alice.keygen()
+    y_b = bob.keygen()
+
+    alice_txt = alice.encrypt(y_b)
+    bob_txt = bob.encrypt(y_a)
 
     # note that we are not checking for the same keys. It was checked before.
     # So we are essentially trusting the key generator since they are private.
